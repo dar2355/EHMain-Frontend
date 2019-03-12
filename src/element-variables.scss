@@ -9,3 +9,13 @@ $--color-primary: teal;
 $--font-path: '~element-ui/lib/theme-chalk/fonts';
 
 @import "~element-ui/packages/theme-chalk/src/index";
+
+
+#table-main {
+  width: 100%;
+
+  .input-string > * {
+    padding: 0 5px;
+    border: none;
+  }
+}
