@@ -101,8 +101,8 @@ export default Vue.extend({
     console.log(memberDataFull);
   },
   methods: {
-    addEntry() {
-      //
+    async addEntry() {
+      this.table.data.push(await this.$refs.table.addEntry('http://127.0.0.1:3000/api/members'));
     },
     submit() {
       this.$refs.table.submit('http://127.0.0.1:3000/api/members');

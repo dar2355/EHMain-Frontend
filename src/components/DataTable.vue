@@ -31,7 +31,7 @@
               :isEnum="section.enum && section.enum.length > 0"
               :enumValues="section.enum"
               :givenValues="scope.row[row.name][section.name]"
-              :ref="`input_${scope.$index}`"
+              :ref="`input_${scope.$index}_${row.name}_${section.name}`"
               />
             <dynamic-input v-else
               :type="section.type"
@@ -41,7 +41,7 @@
               :isEnum="section.enum && section.enum.length > 0"
               :enumValues="section.enum"
               :givenValue="scope.row[row.name][section.name]"
-              :ref="`input_${scope.$index}`"
+              :ref="`input_${scope.$index}_${row.name}_${section.name}`"
               />
           </template>
         </el-table-column>
@@ -58,7 +58,7 @@
           :isEnum="row.enum && row.enum.length > 0"
           :enumValues="row.enum"
           :givenValues="scope.row[row.name]"
-          :ref="`input_${scope.$index}`"
+          :ref="`input_${scope.$index}_${row.name}`"
           />
         <dynamic-input v-else
           :type="row.type"
@@ -68,7 +68,7 @@
           :isEnum="row.enum && row.enum.length > 0"
           :enumValues="row.enum"
           :givenValue="scope.row[row.name]"
-          :ref="`input_${scope.$index}`"
+          :ref="`input_${scope.$index}_${row.name}`"
           />
       </template>
     </el-table-column>
@@ -118,35 +118,48 @@ export default Vue.extend({
   },
   methods: {
     getData() {
-      const elements = [];
+      // entries should consist of the data following
+      // the given schema's structure (rowData)
+      const outArray = [];
+      console.log(this.$refs);
+
+      // recursive part of this function ---
+      // independent of which data entry
+      // the loop below is on
+      const traverseData = (index: number, rowData: any, branch: string = '') => {
+        const out: any = {};
+        for (const value of rowData) {
+          if (value.hasOwnProperty('subsections')) {
+            out[value.name] = traverseData(index, value.subsections, `${branch}_${value.name}`);
+          } else {
+            console.log(index, branch, value.name);
+            // console.log(this.$refs[`input_${index}${branch}_${value.name}`]);
+            out[value.name] = this.$refs[`input_${index}${branch}_${value.name}`][0].getValue();
+          }
+        }
+        return out;
+      };
+
+      // loop through each column of data
       for (let i = 0; i < this.data.length; i++) {
-        elements.push(this.$refs[`input_${i}`].map((el: any) => el.getValue()));
+        outArray.push(traverseData(i, this.rowData));
       }
 
-      let selected;
-      if (this.noneSelected) { selected = elements; }
-      else { selected = elements.filter((_: any, i: number) => this.selected[i]); }
-
-      const toSend = selected.map((arr: any) => {
-        const outObj = {};
-        for (const [i, row] of this.rowData.entries()) {
-          if (row.hasOwnProperty('subsections')) {
-            outObj[row.name] = {};
-            for (const [subI, value] of row.subsections.entries()) {
-              outObj[row.name][value.name] = arr[i + subI];
-            }
-          } else {
-            outObj[row.name] = arr[i];
-          }
-
-        }
-        return outObj;
+      return outArray;
+    },
+    async addEntry(endpoint: string) {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'authorization': '' + window.sessionStorage.getItem('jwt'),
+        },
       });
 
-      return toSend;
+      return (await res.json()).newUser;
     },
     async submit(endpoint: string) {
       const toSend = this.getData();
+      console.log(toSend);
 
       const res = await fetch(endpoint, {
         method: 'PUT',
@@ -162,6 +175,7 @@ export default Vue.extend({
     async deleteSelected(endpoint: string) {
       if (this.noneSelected) { return; }
 
+      const toSend = this.getData();
 
       const res = await fetch(endpoint, {
         method: 'DELETE',
